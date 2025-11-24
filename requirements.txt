@@ -1,7 +1,10 @@
 fastapi
 uvicorn
 python-multipart
-torch --index-url https://download.pytorch.org/whl/cpu
-torchvision --index-url https://download.pytorch.org/whl/cpu
+jinja2
 pillow
 numpy
+# The following lines force the CPU-only version of PyTorch
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.0.0+cpu
+torchvision==0.15.1+cpu
