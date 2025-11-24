@@ -7,12 +7,14 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 import io
+import gc  # Added for memory management
 
 # Initialize App
 app = FastAPI()
 
-# Setup Templates (to serve HTML)
-templates = Jinja2Templates(directory="templates")
+# Setup Templates 
+# directory="." means it looks for index.html in the SAME folder as main.py
+templates = Jinja2Templates(directory=".")
 
 # -------------------------
 # 1. Configuration
@@ -22,11 +24,12 @@ CLASS_NAMES = ["FAKE", "REAL"]
 DEVICE = torch.device("cpu") 
 
 # -------------------------
-# 2. Load Model
+# 2. Load Model (Optimized)
 # -------------------------
 def load_model():
-    print("Loading model...")
+    print("Loading model architecture...")
     try:
+        # 1. Define Architecture
         model = models.convnext_base(weights=None)
         in_features = model.classifier[2].in_features
         model.classifier = nn.Sequential(
@@ -37,16 +40,38 @@ def load_model():
             nn.Linear(256, 2)
         )
         
+        # 2. Load Weights
+        print("Loading weights...")
         state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
         model.load_state_dict(state_dict)
         model.to(DEVICE)
         model.eval()
-        print("Model loaded successfully!")
+        
+        # Clear the state_dict from memory immediately
+        del state_dict
+        gc.collect()
+
+        # ---------------------------------------------------------
+        # OPTIMIZATION: DYNAMIC QUANTIZATION
+        # ---------------------------------------------------------
+        print("Applying Dynamic Quantization to reduce memory usage...")
+        
+        # This converts Linear layers from Float32 (heavy) to Int8 (light)
+        # We skip Conv2d because standard dynamic quantization supports Linear/RNN/LSTM best on CPU
+        model = torch.quantization.quantize_dynamic(
+            model, 
+            {nn.Linear},  
+            dtype=torch.qint8        
+        )
+        print("Quantization complete!")
+        # ---------------------------------------------------------
+
         return model
     except Exception as e:
         print(f"CRITICAL ERROR loading model: {e}")
         return None
 
+# Load model globally
 model = load_model()
 
 # -------------------------
@@ -72,7 +97,7 @@ async def home(request: Request):
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     if model is None:
-        return {"error": "Model not loaded properly."}
+        return {"error": "Model failed to load. Check server logs."}
 
     try:
         # Read and Process Image
@@ -86,6 +111,11 @@ async def predict(file: UploadFile = File(...)):
             probs = torch.softmax(outputs, dim=1)
             pred_idx = torch.argmax(probs, dim=1).item()
             confidence = probs[0][pred_idx].item() * 100
+
+        # Memory cleanup after prediction
+        del img_tensor
+        del image_bytes
+        gc.collect()
 
         return {
             "prediction": CLASS_NAMES[pred_idx],
