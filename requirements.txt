@@ -4,7 +4,12 @@ python-multipart
 jinja2
 pillow
 numpy
-# The following lines force the CPU-only version of PyTorch
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.0.0+cpu
-torchvision==0.15.1+cpu
+
+Use the CPU-specific wheel index to avoid downloading massive GPU drivers
+
+--find-links https://www.google.com/search?q=https://download.pytorch.org/whl/cpu/torch_stable.html
+
+Python 3.13 requires at least PyTorch 2.5.1
+
+torch>=2.5.1
+torchvision>=0.20.1
