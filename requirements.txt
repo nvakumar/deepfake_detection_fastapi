@@ -1,15 +1,23 @@
+# Core Web Framework
 fastapi
 uvicorn
 python-multipart
+
+# Templating/Frontend (if used)
 jinja2
+
+# Image Processing
 pillow
 numpy
 
-Use the CPU-specific wheel index to avoid downloading massive GPU drivers
+# --- CPU Optimization for PyTorch ---
+# 1. Correctly include the extra index URL. This must be a direct URL,
+#    not a search query, and it should point to the correct PyTorch index.
+#    The link below is the current correct index for CPU wheels.
+--extra-index-url https://download.pytorch.org/whl/cpu
 
---find-links https://www.google.com/search?q=https://download.pytorch.org/whl/cpu/torch_stable.html
-
-Python 3.13 requires at least PyTorch 2.5.1
-
+# 2. Specify PyTorch and TorchVision versions.
+#    Note: Given your error, I am using the required Python 3.13 versions.
+#    If 2.5.1 is not available yet, this will install the highest compatible version.
 torch>=2.5.1
 torchvision>=0.20.1
